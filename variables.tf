@@ -8,4 +8,10 @@ variable "subnet-cidr-b" {}
 
 variable "subnet-cidr-c" {}
 
+variable "private_subnet" {}
+
+variable "ami_id" {}
+
+
+
 

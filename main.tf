@@ -1,6 +1,6 @@
-provider "aws" {
-  region = var.region
-}
+#provider "aws" {
+#  region = var.region
+#}
 
 resource "aws_vpc" "vpc" {
   cidr_block           = var.vpc-cidr
@@ -55,7 +55,7 @@ resource "aws_route_table_association" "subnet-c-route-table-association" {
 }
 
 resource "aws_instance" "instance" {
-  ami                         = "ami-085ed5922c6881dd6"
+  ami                         = "var.ami_id"
   instance_type               = "t2.small"
   vpc_security_group_ids      = [ aws_security_group.security-group.id ]
   subnet_id                   = aws_subnet.subnet-a.id
@@ -99,4 +99,57 @@ resource "aws_security_group" "security-group" {
 
 output "nginx_domain" {
   value = aws_instance.instance.public_dns
+}
+
+## Create an EIP for natgateway 
+resource "aws_eip" "nat_eip" {
+  vpc        = true
+  depends_on = [aws_internet_gateway.igw]
+  }
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.subnet-a.id
+  lifecycle {
+  prevent_destroy = true
+  create_before_destroy = true
+  }
+  tags = {
+    Name = "private-Nat-Gw"
+  }
+
+  depends_on = [aws_internet_gateway.igw]
+}
+
+# create Route Table and Add Private Route
+# terraform aws create route table
+resource "aws_route_table" "private-route-table" {
+  vpc_id       = aws_vpc.vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags       = {
+    Name     = "private Route Table"
+  }
+}
+
+# Associate private subnet to "private Route Table"
+# terraform aws associate subnet with route table
+resource "aws_route_table_association" "private_subnet-route-table-association" {
+  subnet_id           = aws_subnet.private_subnet.id
+  route_table_id      = aws_route_table.private-route-table.id
+}
+# Create Private Subnet
+# terraform aws create subnet
+resource "aws_subnet" "private_subnet" {
+  vpc_id                   = aws_vpc.vpc.id
+  cidr_block               = var.private_subnet
+  availability_zone        = "eu-west-1a"
+  map_public_ip_on_launch  = false
+
+  tags      = {
+    Name    = "private_subnet"
+  }
 }
