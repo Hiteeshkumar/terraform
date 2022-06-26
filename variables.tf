@@ -12,6 +12,8 @@ variable "private_subnet" {}
 
 variable "ami_id" {}
 
+variable "AWS_ACCESS_KEY" {}
 
+variable "AWS_SECRET_KEY" {}
 
 
